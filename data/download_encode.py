@@ -162,13 +162,12 @@ filtered_dnase = dnase_files.drop_duplicates(subset=["Biosample term name"] , ke
 chip_files = filtered_files[(((filtered_files["Output type"] == "replicated peaks") | (filtered_files["Output type"] == "optimal IDR thresholded peaks"))
                              & (filtered_files["Assay"].str.contains("ChIP-seq")) )] # or conservative idr thresholded peaks?
 
-print(chip_files.shape[0])
 # only want ChIP-seq from cell lines that have DNase
 filtered_chip = chip_files[(chip_files["Biosample term name"].isin(filtered_dnase["Biosample term name"]))]
 # select first assay without audit warning
 filtered_chip = filtered_chip.sort_values(by=['Audit WARNING','Audit NOT_COMPLIANT'])
 filtered_chip = filtered_chip.drop_duplicates(subset=["Biosample term name","Experiment target"] , keep='last')
-print(filtered_chip.shape[0])
+
 
 
 
@@ -177,7 +176,7 @@ filtered_chip = filtered_chip.groupby("Experiment target").filter(lambda x: len(
 
 # only want cells that have more than min_chip_per_cell epigenetic marks
 filtered_chip = filtered_chip.groupby("Biosample term name").filter(lambda x: len(x) >= min_chip_per_cell)
-print(filtered_chip.shape[0])
+
 # only filter if use requires at least one chip experiment for a cell type.
 if min_chip_per_cell > 0:
     # only want DNase that has chip.
@@ -192,9 +191,15 @@ logger.info("Processing %i files..." % len(filtered_files))
 ##############################################################################################
 
 def download_url(f, tries = 0):
+<<<<<<< HEAD
 
     logger.warning("Trying to download %s for the %ith time..." % (f["File download URL"], tries))
 
+=======
+    
+    logger.warning("Trying to download %s for the %ith time..." % (f["File download URL"], tries))
+    
+>>>>>>> 11faf45... updated download code for ENCODE3
     if tries == 2:
         raise Exception("File accession %s from URL %s failed for download 3 times. Exiting 1..." % (f['File accession'], f["File download URL"]))
 
@@ -316,14 +321,29 @@ if os.path.exists(matrix_path_all):
     # make sure the dataset hasnt changed if you are appending
     assert(matrix[0,:].shape[0] == nregions)
     assert(matrix[:,0].shape[0] == len(filtered_files))
+<<<<<<< HEAD
+=======
+
+else:
+    h5_file = h5py.File(matrix_path_all, "w")
+    matrix = h5_file.create_dataset("data", (len(filtered_files), nregions), dtype='i',
+        compression='gzip', compression_opts=9)
+>>>>>>> 11faf45... updated download code for ENCODE3
 
 else:
     h5_file = h5py.File(matrix_path_all, "w")
     matrix = h5_file.create_dataset("data", (len(filtered_files), nregions), dtype='i',
         compression='gzip', compression_opts=9)
 
+<<<<<<< HEAD
 
 
+bed_files = list(filter(lambda x: x.endswith(".bed") & x.startswith("ENC"), os.listdir(download_path)))
+logger.info("Running bedtools on %i files..." % len(bed_files))
+
+# batch files and parallelize
+for b in chunk(enumerate(bed_files), threads):
+=======
 bed_files = list(filter(lambda x: x.endswith(".bed") & x.startswith("ENC"), os.listdir(download_path)))
 logger.info("Running bedtools on %i files..." % len(bed_files))
 
@@ -345,8 +365,28 @@ for b in chunk(enumerate(bed_files), threads):
             raise Exception("Feature name %s starting at position %i did not match feature file (%s). This is most likely because you \
             downloaded more or deleted bed files. Delete your saved in %s data files and start from scratch." \
             % (feature_names, indices[0], written_features[indices[0]+1:indices[-1]+1], download_path))
+>>>>>>> 11faf45... updated download code for ENCODE3
+
+    files = list(map(lambda x: os.path.join(download_path, x[1]), b))
+    indices = [i[0] for i in b]
+    cells = [fileName.split("_")[-1].split(".")[0] for (idx, fileName) in b] # remove file ext
+    targets = [fileName.split("_")[1].split("-")[0] for (idx, fileName) in b] # remove "human"
+    feature_names = ["%i\t%s|%s|%s" % (i+1, cell, target, "None") for (i, cell, target) in zip(indices, cells, targets)]
+
+<<<<<<< HEAD
+    # if whole batch is already written, skip it
+    if (len(written_features) > indices[-1]+1):
+        if (feature_names == written_features[indices[0]+1:indices[-1]+2]):
+            logger.info("skipping batch for indices %s, already written" % indices)
+            continue
+        else:
+            raise Exception("Feature name %s starting at position %i did not match feature file (%s). This is most likely because you \
+            downloaded more or deleted bed files. Delete your saved in %s data files and start from scratch." \
+            % (feature_names, indices[0], written_features[indices[0]+1:indices[-1]+1], download_path))
 
 
+=======
+>>>>>>> 11faf45... updated download code for ENCODE3
     logger.info("writing into matrix at positions %i:%i" % (indices[0], indices[-1]+1))
 
     # Should not parallelize bedtools. Gives non-deterministic results.
@@ -425,12 +465,20 @@ def save_epitome_numpy_data(download_dir, output_path):
         matrix = h5_file.create_dataset("data", nonzero_data.shape, dtype='i',
             compression='gzip', compression_opts=9)
         matrix[:,:] = nonzero_data
+<<<<<<< HEAD
 
         h5_file.close()
         logger.info("done saving matrix")
 
 
 
+=======
+        h5_file.close()
+        logger.info("done saving matrix")
+        
+        
+        
+>>>>>>> 11faf45... updated download code for ENCODE3
     # gzip filtered all_regions_file
     if not os.path.exists(all_regions_file_gz):
         stdout = open(all_regions_file_gz,"wb")
@@ -487,3 +535,7 @@ os.remove(all_regions_file_unfiltered_gz)
 os.remove(all_regions_file_unfiltered + ".tmp")
 # remove h5 file with all zeros
 os.remove(matrix_path_all) # remove h5 file with all zeros
+<<<<<<< HEAD
+=======
+
+>>>>>>> 11faf45... updated download code for ENCODE3
