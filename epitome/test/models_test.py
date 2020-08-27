@@ -38,7 +38,11 @@ class ModelsTest(EpitomeTestCase):
 
 		eligible_assays = ['CTCF', 'RAD21', 'CEBPB']
 
+<<<<<<< HEAD
 		model = VLP(list(eligible_assays))
+=======
+		model = VLP(list(eligible_assays), data = data)
+>>>>>>> e187487... added option to specify data path in ENV variable
 		assert(len(model.assaymap) == 4)
 
 	def test_eval_vector(self):
