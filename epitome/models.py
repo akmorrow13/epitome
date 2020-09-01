@@ -29,6 +29,12 @@ import logging
 import pickle
 from operator import itemgetter
 
+# TODO RM!
+# this is required because tensorflow is running in eager mode
+# but keras weights are not, which throws an error
+# should be fixed by not running in eager mode
+tf.config.experimental_run_functions_eagerly(True)
+
 #######################################################################
 #################### Variational Peak Model ###########################
 #######################################################################
