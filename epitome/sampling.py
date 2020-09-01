@@ -1,4 +1,5 @@
 import numpy as np
+import scipy.sparse as sp
 
 class MLSMOTE:
     """ Method modfied from https://simidat.ujaen.es/sites/default/files/biblio/2015-KBS-MLSMOTE.pdf
@@ -9,6 +10,12 @@ class MLSMOTE:
     """
     
     def __init__(self, labels):
+        """
+        
+        Args:
+            :param labels: a sparse matrix of size (examples x labels)
+        
+        """
         self.labels = labels
 
         # set initial indices to all spots that have at least 2 positives
@@ -64,7 +71,8 @@ class MLSMOTE:
             indices in dataset where this label is true
 
         """
-        return np.where((self.labels[:,l] == 1))[0]
+        cond = self.labels[:,l] == 1
+        return sp.find(cond)[0]
     
     
     def set_mean_lbl_sums(self):
@@ -74,7 +82,9 @@ class MLSMOTE:
         Returns:
             mean imbalance ratio
         """
-        self.lblsums = np.sum(self.labels[self.indices, :], axis = 0)
+        self.lblsums = np.sum(self.labels[self.indices, :], axis = 0).flatten()
+        # in the case where lblsums was a matrix, and not ndarray
+        self.lblsums = np.squeeze(np.asarray(self.lblsums))
     
     def get_mean_imbalance_ratio(self):
         """ Return the mean imbalance ratio for a given label.
@@ -95,5 +105,5 @@ class MLSMOTE:
         Returns:
             imbalance ratio = = argmax(number of positives of all labels)/number of positives for this label
         """
-
-        return (np.max(self.lblsums)/self.lblsums)[l]
+        tmp = (np.max(self.lblsums)/self.lblsums)
+        return tmp[l]

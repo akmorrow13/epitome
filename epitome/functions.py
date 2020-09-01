@@ -196,7 +196,7 @@ def download_and_unzip(url, dst):
             # delete old zip to free space
             os.remove(dst)
 
-def load_epitome_data(data_dir=None):
+def load_epitome_data(data_dir=None, compressed = True):
     """
     Loads data processed using data/download_encode.py. This will load three sparse matrix files
     (.npz). One for train, valid (chr7) and test (chr 8 and 9). If data is not available,
@@ -221,7 +221,11 @@ def load_epitome_data(data_dir=None):
     assert(np.all([os.path.exists(x) for x in required_paths]))
     npz_files = list(filter(lambda x: x.endswith(".npz"), required_paths))
 
-    sparse_matrices = [scipy.sparse.load_npz(x).toarray() for x in npz_files]
+    sparse_matrices = [scipy.sparse.load_npz(x) for x in npz_files]
+    
+    if not compressed:
+        sparse_matrices = [i.to_array() for i in sparse_matrices]
+        
     return {Dataset.TRAIN: sparse_matrices[0], Dataset.VALID: sparse_matrices[1], Dataset.TEST: sparse_matrices[2]}
 
 ################### Parsing Deepsea Files ########################
@@ -695,11 +699,19 @@ def concatenate_all_data(data, region_file):
 
     # Get chr6 cutoff. takes about 3s.
     chr6_end = range_for_contigs(region_file)['chr6'][1]
-    return np.concatenate([data[Dataset.TRAIN][:,0:chr6_end], # chr 1-6, range_for_contigs is 1 based
+    
+    if type(data[Dataset.VALID]) == scipy.sparse.csc.csc_matrix:
+
+        return scipy.sparse.hstack([data[Dataset.TRAIN][:,0:chr6_end], # chr 1-6, range_for_contigs is 1 based
+                           data[Dataset.VALID], # chr7
+                           data[Dataset.TEST], # chr 8 and 9
+                           data[Dataset.TRAIN][:,chr6_end:]]) # all the rest of the chromosomes        
+    else:
+        
+        return np.concatenate([data[Dataset.TRAIN][:,0:chr6_end], # chr 1-6, range_for_contigs is 1 based
                            data[Dataset.VALID], # chr7
                            data[Dataset.TEST], # chr 8 and 9
                            data[Dataset.TRAIN][:,chr6_end:]],axis=1) # all the rest of the chromosomes
-
 
 
 

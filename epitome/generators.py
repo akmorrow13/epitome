@@ -3,11 +3,18 @@ Functions for data generators.
 """
 
 import numpy as np
+from scipy import sparse
 import tensorflow as tf
 from .constants import *
 from .functions import *
 from .sampling import *
 import glob
+
+######################### Original Data Generator: Only peak based #####################
+np.random.seed(0) # to keep np.random.choice consistent
+
+
+############################### Channel generator ################################
 
 ######################### Original Data Generator: Only peak based #####################
 np.random.seed(0) # to keep np.random.choice consistent
@@ -30,7 +37,7 @@ def load_data(data,
     """
     Takes Deepsea data and calculates distance metrics from cell types whose locations
     are specified by label_cell_indices, and the other cell types in the set. Label space is only one cell type.
-    :param data: dictionary of matrices. Should have keys x and y. x contains n by 1000 rows. y contains n by 919 labels.
+    :param data: dictionary of sparse matrices. Should have keys x and y. x contains n by 1000 rows. y contains n by 919 labels.
     :param label_cell_types: list of cell types to be rotated through and used as labels (subset of eval_cell_types)
     :param eval_cell_types: list of cell types to be used in evaluation (includes label_cell_types)
     :param matrix: matrix of celltype, assay positions
@@ -51,6 +58,10 @@ def load_data(data,
         3. 0/1 mask of labels that have validation data. For example, if this record is for celltype A549,
         and A549 does not have data for ATF3, there will be a 0 in the position corresponding to the label space.
     """
+    
+    if type(data) == np.ndarray:
+        print("Warning: data not a sparse matrix. Converting...")
+        data = sparse.csr_matrix(data)
 
     # reshape similarity_matrix to a matrix if there is only one assay
     if similarity_matrix is not None:
@@ -192,7 +203,7 @@ def load_data(data,
 
 
                     ####################################################################
-                    cell_train_data = data[similarity_indices[:,:,None],radius_range]
+                    cell_train_data = data[similarity_indices,radius_range].toarray()
 
                     # use similarity matrix, if it is provided
                     if (mode == Dataset.RUNTIME):
@@ -206,7 +217,7 @@ def load_data(data,
                                                  similarity_matrix[:,radius_range], axis=-1)
 
                     else:
-                        cell_label_data = data[label_cell_indices[delete_indices][:,None],radius_range]
+                        cell_label_data = data[label_cell_indices[delete_indices][:,None],radius_range].toarray()
 
                         similarity_double_positive = np.average(cell_train_data*
                                                  cell_label_data, axis=-1)
@@ -217,9 +228,8 @@ def load_data(data,
 
                     similarity_labels_agreement.append('r%i_%s' % (radius, 'agree'))
                     similarity_labels_dp.append('r%i_%s' % (radius, 'dp'))
-
-                    similarities_double_positive = np.concatenate([similarities_double_positive,similarity_double_positive],axis=1)
-                    similarities_agreement = np.concatenate([similarities_agreement,similarity_agreement],axis=1)
+                    similarities_double_positive = np.concatenate([similarities_double_positive,similarity_double_positive[:,None]],axis=1)
+                    similarities_agreement = np.concatenate([similarities_agreement,similarity_agreement[:,None]],axis=1)
 
                 # rehape agreement assay similarity to Radii by feature_cells
                 similarities = np.concatenate([similarities_agreement, similarities_double_positive], axis=1)
@@ -231,7 +241,7 @@ def load_data(data,
                     present_indices = feature_cell_indices[j,:]
                     present_indices = present_indices[present_indices!=-1]
 
-                    cell_features = data[present_indices,i]
+                    cell_features = data[present_indices,i].toarray().flatten()
                     cell_similarities = similarities[j,:]
                     concat = np.concatenate([cell_features, cell_similarities])
                     final.append(concat)
@@ -245,7 +255,7 @@ def load_data(data,
 
 
                 if (mode != Dataset.RUNTIME):
-                    labels = data[label_cell_indices_no_similarities,i]
+                    labels = data[label_cell_indices_no_similarities,i].toarray().flatten()
 
                 else: # used when just predicting
                     # The features going into the example.
