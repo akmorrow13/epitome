@@ -67,6 +67,8 @@ def load_data(data,
     # get indices for features. rows are cells and cols are targets
     cellmap_idx = [cellmap[c] for c in list(eval_cell_types)]
     feature_cell_indices = matrix[cellmap_idx,:]
+    # make a dict of cellname: row index in feature_cell_indices
+    feature_cell_dict = dict(list(zip(list(eval_cell_types), range(feature_cell_indices.shape[0]))))
 
     # indices to be deleted. used for similarity comparison, not predictions.
     delete_indices = np.array([targetmap[s] for s in similarity_targets]).astype(int)
@@ -208,7 +210,15 @@ def load_data(data,
                 similarities = similarities.reshape(similarities.shape[0], similarities.shape[1]*similarities.shape[2])
 
                 ##### Concatenate all cell type features together ####
-                final_features = np.concatenate([data[feature_cell_indices,i], similarities],axis=1).flatten()
+                final_features = np.concatenate([data[feature_cell_indices,i], similarities],axis=1)
+
+                # If you are in training mode, 0 out the features that you are predicting
+                # on in this instance. i.e. if labels are for K562, grey out K562 features.
+                if mode == Dataset.TRAIN:
+                    final_features[feature_cell_dict[cell],:]=0
+
+                # flatten features
+                final_features = final_features.flatten()
 
                 # mask missing data
                 f_mask = np.concatenate([feature_cell_indices!=-1,

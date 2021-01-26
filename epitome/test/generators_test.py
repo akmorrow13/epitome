@@ -14,6 +14,33 @@ class GeneratorsTest(EpitomeTestCase):
 		matrix, cellmap, targetmap = self.getFeatureData(eligible_targets, eligible_cells)
 		self.train_shape = (np.max(matrix)+1, 1800)  # 1800 is size of toy data training
 
+	def test_zero_out_features_train(self):
+		data = np.zeros(self.train_shape)
+		data[:] = 1 # everything is ones
+
+		eligible_cells = ['K562','HepG2','A549']
+		eligible_targets = ['DNase','CTCF']
+		matrix, cellmap, targetmap = self.getFeatureData(eligible_targets,
+			eligible_cells,
+			min_cells_per_target = 1,
+			min_targets_per_cell = 1)
+
+		results = load_data(data,
+			['HepG2','A549'],
+			['HepG2','A549'],
+			matrix,
+			targetmap,
+			cellmap,
+			radii = [1], # no dnase
+			mode = Dataset.TRAIN,
+			return_feature_names = True,
+			indices=np.arange(0,2))()
+		li_results = list(results)
+
+		# make sure the celltype being predicted has 0'd out features
+		assert np.sum(li_results[0][0][0][:4])==0
+		assert np.sum(li_results[1][0][0][4:])==0
+
 	def test_generator_no_dnase(self):
 
         # generate consistent data
@@ -44,7 +71,6 @@ class GeneratorsTest(EpitomeTestCase):
 		pos_position = 6
 		print(li_results[pos_position][-2])
 		assert(np.all(li_results[pos_position][-2] == 1))
-
 
 	def test_generator_no_similarity(self):
 		# generate consistent data
