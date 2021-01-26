@@ -50,14 +50,14 @@ class ModelsTest(EpitomeTestCase):
 
 		# Make sure predictions are not random
 		# after first iterations
-		assert(results1['preds_mean'].shape[0] == self.validation_size)
-		assert(results2['preds_mean'][0] < results1['preds_mean'].shape[0])
+		assert(results1['preds'].shape[0] == self.validation_size)
+		assert(results2['preds'][0] < results1['preds'].shape[0])
 
 	def test_test_model(self):
 
 		# make sure can run in test mode
 		results = self.model.test(self.validation_size, mode=Dataset.TEST)
-		assert(results['preds_mean'].shape[0] == self.validation_size)
+		assert(results['preds'].shape[0] == self.validation_size)
 
 	def test_specify_assays(self):
 		# test for https://github.com/YosefLab/epitome/issues/23
@@ -87,7 +87,7 @@ class ModelsTest(EpitomeTestCase):
 		# should be able to evaluate on a dnase vector
 		similarity_matrix = np.ones(self.model.data[Dataset.TRAIN].shape[1])[None,:]
 		results = self.model.eval_vector(self.model.data[Dataset.TRAIN], similarity_matrix, np.arange(0,20))
-		assert(results[0].shape[0] == 20)
+		assert(results.shape[0] == 20)
 
 	def test_save_model(self):
 		# should save and re-load model
@@ -95,7 +95,7 @@ class ModelsTest(EpitomeTestCase):
 		self.model.save(tmp_path)
 		loaded_model = VLP(checkpoint=tmp_path, data = self.model.data)
 		results = loaded_model.test(self.validation_size)
-		assert(results['preds_mean'].shape[0] == self.validation_size)
+		assert(results['preds'].shape[0] == self.validation_size)
 
 	def test_score_matrix(self):
 

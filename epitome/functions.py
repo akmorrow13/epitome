@@ -507,7 +507,7 @@ def bed2Pyranges(bed_file):
 
     p['idx']=p.index
     p.columns = ['Chromosome', 'Start','End','idx']
-    return pr.PyRanges(p).sort()
+    return pr.PyRanges(p, int64=True).sort()
 
 
 
@@ -570,7 +570,6 @@ def bedFile2Vector(bed_file, allpos_bed_file):
     bed_files = [(allpos_bed_file, bed_file, False), (bed_file, allpos_bed_file, True)]
     pool = multiprocessing.Pool(processes=2)
     results = pool.map(bedtools_intersect, bed_files)
-
     pool.close()
     pool.join()
 
