@@ -637,7 +637,6 @@ class VariationalPeakModel():
             means = means.numpy()
             stds = stds.numpy()
 
-
         means_df =  pd.DataFrame(data=means, columns=self.dataset.predict_targets)
         std_cols = list(map(lambda x: x + "_stds",self.dataset.predict_targets))
         stds_df =  pd.DataFrame(data=stds, columns=std_cols)
