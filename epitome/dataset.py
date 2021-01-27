@@ -111,7 +111,7 @@ class EpitomeDataset:
             'End':dataset['columns']['start'][:] + dataset['columns']['binSize']})
 
         self.regions['idx']=self.regions.index
-        self.regions = pr.PyRanges(self.regions)
+        self.regions = pr.PyRanges(self.regions, int64=True)
 
         # save indices for later use
         self.indices = {}
