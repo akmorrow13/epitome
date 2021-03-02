@@ -179,6 +179,54 @@ def indices_for_weighted_resample(data, n,  matrix, cellmap, assaymap, weights =
     surrounding = np.unique(list(map(func_, choice)))
     return surrounding[(surrounding > 0) & (surrounding < data_count)].astype(int)
 
+def compute_casv(m1, m2, radii):
+    '''
+    Computes CASV between two matrices. CASV indiciates how similar
+    two binary matrices are to eachother. m1 and m2 should have the
+    same number of rows and columns, where rows indicate regions and
+    columns indicate the assays used to compute the casv (ie DNase-seq, H3K27ac)
+
+    :param np.matrix m1: numpy matrix shape (nregions x nassays x ncells)
+    :param np.matrix m2: numpy matrix shape (nregions x nassays x nsamples)
+
+    :return numpy matrix of size (nregions x CASV dimension x ncells x nsamples)
+    '''
+
+    # concatenate m1 and m2 on the last axis so we can pass it into
+    # apply_along_axis
+    # c = np.concatenate(m1, m2, axis = -1)
+
+    def f(i):
+        # get indices for each radius in radii
+        radius_ranges = list(map(lambda x: get_radius_indices(radii, x, i, m1.shape[0]), range(len(radii))))
+
+        if len(radius_ranges) > 0:
+            radius_indices = np.concatenate(radius_ranges)
+
+            # data from known cell types (m1 portion)
+            m1_slice = m1[radius_indices, :, :]
+            m2_slice = m2[radius_indices, :, :]
+
+            pos = m1_slice * m2_slice
+            agree = m1_slice == m2_slice
+
+            # get indices to split on. remove last because it is empty
+            split_indices = np.cumsum([len(i) for i in radius_ranges])[:-1]
+            # slice arrays by radii
+            pos_arrays = np.split(pos, split_indices, axis= -1 )
+            agree_arrays = np.split(agree, split_indices, axis = -1)
+
+            return np.stack(list(map(lambda x: np.average(x, axis = -1), pos_arrays + agree_arrays)),axis=1)
+        else:
+            # no radius, so no similarities. just an empty placeholder
+            # shaped with the number of cells (last dim of m1)
+            return np.zeros((m1.shape[-1],0,0))
+
+
+    return np.apply_along_axis(f, 0, c)
+
+
+
 
 def get_radius_indices(radii, r, i, max_index):
     '''

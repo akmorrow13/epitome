@@ -216,8 +216,9 @@ def load_data(data,
                     # no radius, so no similarities. just an empty placeholder
                     similarities = np.zeros((len(eval_cell_types),0,0))
 
+
                 # reshape similarities to flatten 1st dimension, which are the targets
-                # results in the odering:
+                # results in the ordering:
                 ## row 1: cell 1: pos for each target and agree for each target for each radius
                 similarities = similarities.reshape(similarities.shape[0], similarities.shape[1]*similarities.shape[2])
 
