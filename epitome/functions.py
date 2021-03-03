@@ -179,7 +179,7 @@ def indices_for_weighted_resample(data, n,  matrix, cellmap, assaymap, weights =
     surrounding = np.unique(list(map(func_, choice)))
     return surrounding[(surrounding > 0) & (surrounding < data_count)].astype(int)
 
-def compute_casv(m1, m2, radii):
+def compute_casv(m1, m2, radii, indices= None):
     '''
     Computes CASV between two matrices. CASV indiciates how similar
     two binary matrices are to eachother. m1 and m2 should have the
@@ -188,13 +188,19 @@ def compute_casv(m1, m2, radii):
 
     :param np.matrix m1: numpy matrix shape (nregions x nassays x ncells)
     :param np.matrix m2: numpy matrix shape (nregions x nassays x nsamples)
+    :param radii: list of radii to access surrounding region
+    :param indices: indices on 0th axis of m1 and m2 to compute casv for
 
-    :return numpy matrix of size (nregions x CASV dimension x ncells x nsamples)
+    :return numpy matrix of size (len(indices) x CASV dimension x ncells x nsamples)
     '''
+    ncells = m1.shape[-1]
+    assert m1.shape[:-1] == m2.shape[:-1]
 
-    # concatenate m1 and m2 on the last axis so we can pass it into
-    # apply_along_axis
-    # c = np.concatenate(m1, m2, axis = -1)
+    if indices is None:
+        indices = range(m1.shape[0])
+
+    # reshape m1 to put all assay/train cells on the last axis
+    m1 = m1.reshape(m1.shape[0],m1.shape[1]*m1.shape[2])
 
     def f(i):
         # get indices for each radius in radii
@@ -204,27 +210,29 @@ def compute_casv(m1, m2, radii):
             radius_indices = np.concatenate(radius_ranges)
 
             # data from known cell types (m1 portion)
-            m1_slice = m1[radius_indices, :, :]
+            m1_slice = m1[radius_indices, :]
             m2_slice = m2[radius_indices, :, :]
 
-            pos = m1_slice * m2_slice
-            agree = m1_slice == m2_slice
+            # shape: radius size x ncells by nsamples
+            pos = (m1_slice.T*m2_slice.T).T
+
+            agree = (m1_slice.T == m2_slice.T).T
 
             # get indices to split on. remove last because it is empty
             split_indices = np.cumsum([len(i) for i in radius_ranges])[:-1]
             # slice arrays by radii
-            pos_arrays = np.split(pos, split_indices, axis= -1 )
-            agree_arrays = np.split(agree, split_indices, axis = -1)
-
-            return np.stack(list(map(lambda x: np.average(x, axis = -1), pos_arrays + agree_arrays)),axis=1)
+            pos_arrays = np.split(pos, split_indices, axis= 0 )
+            agree_arrays = np.split(agree, split_indices, axis = 0)
+            # average over the radius (0th axis)
+            return np.stack(list(map(lambda x: np.average(x, axis = 0), pos_arrays + agree_arrays)),axis=0)
         else:
             # no radius, so no similarities. just an empty placeholder
             # shaped with the number of cells (last dim of m1)
-            return np.zeros((m1.shape[-1],0,0))
+            return np.zeros((0,ncells,m2.shape[-1]))
 
-
-    return np.apply_along_axis(f, 0, c)
-
+    # for every region
+    # TODO: maybe something more efficient?
+    return np.stack([f(i) for i in indices])
 
 
 
@@ -244,8 +252,8 @@ def get_radius_indices(radii, r, i, max_index):
     '''
     radius = radii[r]
 
-    min_radius = max(0, i - radius)
-    max_radius = min(i+radius+1, max_index)
+    min_radius = max(0, i - radius+1)
+    max_radius = min(i+radius, max_index)
 
     # do not featurize chromatin regions
     # that were considered in smaller radii
@@ -258,5 +266,6 @@ def get_radius_indices(radii, r, i, max_index):
     else:
 
         radius_range = np.arange(min_radius, max_radius)
+        # radius_range = np.arange(min_radius+1, max_radius-1) # TODO
 
     return radius_range
