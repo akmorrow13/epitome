@@ -42,7 +42,6 @@ class GeneratorsTest(EpitomeTestCase):
 
 		# this element is a positive
 		pos_position = 6
-		print(li_results[pos_position][-2])
 		assert(np.all(li_results[pos_position][-2] == 1))
 
 

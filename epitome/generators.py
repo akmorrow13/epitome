@@ -185,42 +185,22 @@ def load_data(data,
                 similarity_indices = feature_cell_indices[:, delete_indices]
 
 
-                # get indices for each radius in radii
-                radius_ranges = list(map(lambda x: get_radius_indices(radii, x, i, data.shape[-1]), range(len(radii))))
 
-                if len(radius_ranges) > 0:
-                    radius_indices = np.concatenate(radius_ranges)
+                if mode == Dataset.RUNTIME:
+                    # TODO: don't transpose all these matrices everytime you run
+                    similarities = compute_casv(data[similarity_indices,:].T,
+                                                similarity_matrix.T,
+                                                radii, indices= [i])
 
-                    cell_train_data = data[similarity_indices[:,:,None],radius_indices]
-
-                    if mode == Dataset.RUNTIME:
-
-                        pos = cell_train_data*similarity_matrix[:,radius_indices]
-                        agree = cell_train_data == similarity_matrix[:,radius_indices]
-
-                    else:
-                        cell_label_data = data[label_cell_indices[delete_indices][:,None],radius_indices]
-
-                        # remove middle dimension and flatten similarity targets
-                        pos = (cell_train_data*cell_label_data)
-                        agree = (cell_train_data == cell_label_data)
-
-                    # get indices to split on. remove last because it is empty
-                    split_indices = np.cumsum([len(i) for i in radius_ranges])[:-1]
-                    # slice arrays by radii
-                    pos_arrays = np.split(pos, split_indices, axis= -1 )
-                    agree_arrays = np.split(agree, split_indices, axis = -1)
-
-                    similarities = np.stack(list(map(lambda x: np.average(x, axis = -1), pos_arrays + agree_arrays)),axis=1)
                 else:
-                    # no radius, so no similarities. just an empty placeholder
-                    similarities = np.zeros((len(eval_cell_types),0,0))
+                    # TODO: don't transpose all these matrices everytime you run
+                    similarities = compute_casv(data[similarity_indices,:].T,
+                                                data[label_cell_indices[delete_indices],:].T,
+                                                radii, indices= [i])
 
-
-                # reshape similarities to flatten 1st dimension, which are the targets
-                # results in the ordering:
-                ## row 1: cell 1: pos for each target and agree for each target for each radius
-                similarities = similarities.reshape(similarities.shape[0], similarities.shape[1]*similarities.shape[2])
+                # select first region and first sample
+                # transpose because we want dimensions ncells x CASV
+                similarities = similarities[0,:,:,0].T
 
                 ##### Concatenate all cell type features together ####
                 final_features = np.concatenate([data[feature_cell_indices,i], similarities],axis=1).flatten()

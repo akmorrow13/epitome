@@ -186,21 +186,42 @@ def compute_casv(m1, m2, radii, indices= None):
     same number of rows and columns, where rows indicate regions and
     columns indicate the assays used to compute the casv (ie DNase-seq, H3K27ac)
 
-    :param np.matrix m1: numpy matrix shape (nregions x nassays x ncells)
-    :param np.matrix m2: numpy matrix shape (nregions x nassays x nsamples)
+    :param np.matrix m1: 2D or 3D numpy matrix 2D shape (nregions x (nassays x ncells))
+      where 2nd dimension is blocked by cells (i.e. cell1assay1, cell1assay2, cell2assay1, cell2assay2)
+      OR 3D: (nregions x nassays x ncells)
+    :param np.matrix m2: 3D numpy matrix shape (nregions x nassays x nsamples)
     :param radii: list of radii to access surrounding region
     :param indices: indices on 0th axis of m1 and m2 to compute casv for
 
     :return numpy matrix of size (len(indices) x CASV dimension x ncells x nsamples)
     '''
-    ncells = m1.shape[-1]
-    assert m1.shape[:-1] == m2.shape[:-1]
 
     if indices is None:
         indices = range(m1.shape[0])
 
-    # reshape m1 to put all assay/train cells on the last axis
-    m1 = m1.reshape(m1.shape[0],m1.shape[1]*m1.shape[2])
+    # if only one sample, extend m2 along 2nd axis
+    if len(m2.shape) == 2:
+        m2 = m2[:,:,None]
+
+    # if needed, reshape m1 to put all assay/train cells on the last axis
+    if len(m1.shape) == 3:
+      ncells = m1.shape[-1]
+      m1 = m1.reshape(m1.shape[0],m1.shape[1]*m1.shape[2])
+    else:
+      denom = 1 if m2.shape[1]==0 else m2.shape[1]
+      ncells = int(m1.shape[-1]/denom)
+
+    print("m1",m1.shape)
+    print("m2",m2.shape)
+
+    if m2.shape[1] == 0:
+      # in this case, there is no CASV to compute, so we just return
+      return np.zeros((len(indices),0, ncells,m2.shape[-1]))
+
+    assert m1.shape[0] == m2.shape[0]
+    # verify number of assays match
+    assert m2.shape[1] == m1.shape[-1]/ncells
+
 
     def f(i):
         # get indices for each radius in radii
@@ -212,25 +233,24 @@ def compute_casv(m1, m2, radii, indices= None):
             # data from known cell types (m1 portion)
             m1_slice = m1[radius_indices, :]
             m2_slice = m2[radius_indices, :, :]
-
             # shape: radius size x ncells by nsamples
             pos = (m1_slice.T*m2_slice.T).T
 
             agree = (m1_slice.T == m2_slice.T).T
-
             # get indices to split on. remove last because it is empty
             split_indices = np.cumsum([len(i) for i in radius_ranges])[:-1]
             # slice arrays by radii
             pos_arrays = np.split(pos, split_indices, axis= 0 )
             agree_arrays = np.split(agree, split_indices, axis = 0)
             # average over the radius (0th axis)
-            return np.stack(list(map(lambda x: np.average(x, axis = 0), pos_arrays + agree_arrays)),axis=0)
+            tmp = np.stack(list(map(lambda x: np.average(x, axis = 0), pos_arrays + agree_arrays)),axis=0)
+            return tmp
         else:
             # no radius, so no similarities. just an empty placeholder
             # shaped with the number of cells (last dim of m1)
             return np.zeros((0,ncells,m2.shape[-1]))
 
-    # for every region
+    # for every region of interest
     # TODO: maybe something more efficient?
     return np.stack([f(i) for i in indices])
 

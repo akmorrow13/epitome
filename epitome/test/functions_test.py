@@ -110,3 +110,34 @@ class FunctionsTest(EpitomeTestCase):
         # second region
         assert np.all(casv[1,:,0,0] == np.array([[0, 0.5, 1, 0.5]]))
         assert np.all(casv[1,:,0,1] == np.array([[0,1,1,1]]))
+
+    def test_compute_casv_nassays(self):
+
+        nregions = 3
+        nassays = 2
+        ncells = 1
+        nsamples = 4
+        radii = [1,3]
+        indices = np.array([0,2])
+
+        # m1: reference cells
+        m1 = np.zeros((nregions, nassays, ncells))
+        m1[0]=1 # first region has a signal
+        m1[1]=1 # second region has a signal
+
+        # m2: samples
+        m2 = np.zeros((nregions, nassays, nsamples))
+        m2[0,:,0] = 1 # first cell has 1 signal in region 1
+        # second cell has 2 signals in first 2 regions
+        m2[0:2,:,1] = 1
+
+        casv = compute_casv(m1, m2, radii, indices = indices)
+        assert(casv.shape == (len(indices), nassays*2 * len(radii), ncells, nsamples))
+
+        # # first region
+        # assert np.all(casv[0,:,0,0] == np.array([[1,0, 1,0.5]]))
+        # assert np.all(casv[0,:,0,1] == np.array([[1,0.5, 1,1]]))
+        #
+        # # second region
+        # assert np.all(casv[1,:,0,0] == np.array([[0, 0.5, 1, 0.5]]))
+        # assert np.all(casv[1,:,0,1] == np.array([[0,1,1,1]]))
