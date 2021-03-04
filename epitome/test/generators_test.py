@@ -44,7 +44,6 @@ class GeneratorsTest(EpitomeTestCase):
 		pos_position = 6
 		assert(np.all(li_results[pos_position][-2] == 1))
 
-
 	def test_generator_no_similarity(self):
 		# generate consistent data
 		data = np.zeros(self.train_shape)

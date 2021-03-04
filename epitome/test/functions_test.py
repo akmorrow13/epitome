@@ -116,9 +116,9 @@ class FunctionsTest(EpitomeTestCase):
         nregions = 3
         nassays = 2
         ncells = 1
-        nsamples = 4
+        nsamples = 3
         radii = [1,3]
-        indices = np.array([0,2])
+        indices = np.array([0,1])
 
         # m1: reference cells
         m1 = np.zeros((nregions, nassays, ncells))
@@ -134,10 +134,15 @@ class FunctionsTest(EpitomeTestCase):
         casv = compute_casv(m1, m2, radii, indices = indices)
         assert(casv.shape == (len(indices), nassays*2 * len(radii), ncells, nsamples))
 
-        # # first region
-        # assert np.all(casv[0,:,0,0] == np.array([[1,0, 1,0.5]]))
-        # assert np.all(casv[0,:,0,1] == np.array([[1,0.5, 1,1]]))
-        #
-        # # second region
-        # assert np.all(casv[1,:,0,0] == np.array([[0, 0.5, 1, 0.5]]))
-        # assert np.all(casv[1,:,0,1] == np.array([[0,1,1,1]]))
+        # sample 0: region 0
+        # pos, r1:(1,1), pos, r2: (0,0), agree, r1: (1,1), agree, r2: (0.5,0.5)
+        assert np.all(casv[0,:,0,0] == np.array([[1,1,0,0,1,1,0.5,0.5]]))
+        # sample 0: region 1
+        # pos, r1:(0,0), pos, r2: (0.5,0.5), agree, r1: (0,0), agree, r2: (1,1)
+        assert np.all(casv[1,:,0,0] == np.array([[0,0,0.5,0.5,0,0,1,1]]))
+
+        # sample 1: region 0
+        # pos, r1:(1,1), pos, r2: (0.5,0.5), agree, r1: (1,1), agree, r2: (1,1)
+        assert np.all(casv[0,:,0,1] == np.array([[1,1, 0.5,0.5, 1,1, 1,1]]))
+        # sample 1: region 1
+        assert np.all(casv[1,:,0,1] == casv[0,:,0,1])

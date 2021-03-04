@@ -211,9 +211,6 @@ def compute_casv(m1, m2, radii, indices= None):
       denom = 1 if m2.shape[1]==0 else m2.shape[1]
       ncells = int(m1.shape[-1]/denom)
 
-    print("m1",m1.shape)
-    print("m2",m2.shape)
-
     if m2.shape[1] == 0:
       # in this case, there is no CASV to compute, so we just return
       return np.zeros((len(indices),0, ncells,m2.shape[-1]))
@@ -232,18 +229,31 @@ def compute_casv(m1, m2, radii, indices= None):
 
             # data from known cell types (m1 portion)
             m1_slice = m1[radius_indices, :]
-            m2_slice = m2[radius_indices, :, :]
-            # shape: radius size x ncells by nsamples
-            pos = (m1_slice.T*m2_slice.T).T
+            m2_slice = np.repeat(m2[radius_indices, :, :],axis=1, repeats = ncells)
 
+            # shape: radius size x (nassaysxncells) by nsamples
+            pos = (m1_slice.T*m2_slice.T).T
             agree = (m1_slice.T == m2_slice.T).T
+
+            # split pos and agree arrays to create new dimension for ncells
+            # the new dimension will be 4D: (radius x nassays x ncells x nsamples)
+            pos = np.stack(np.split(pos, ncells, axis=1), axis=2)
+            agree = np.stack(np.split(agree, ncells, axis=1), axis=2)
+
             # get indices to split on. remove last because it is empty
             split_indices = np.cumsum([len(i) for i in radius_ranges])[:-1]
             # slice arrays by radii
             pos_arrays = np.split(pos, split_indices, axis= 0 )
             agree_arrays = np.split(agree, split_indices, axis = 0)
+
             # average over the radius (0th axis)
-            tmp = np.stack(list(map(lambda x: np.average(x, axis = 0), pos_arrays + agree_arrays)),axis=0)
+            tmp1 = list(map(lambda x: np.average(x, axis = 0), pos_arrays + agree_arrays))
+
+            # final concatenation combines agree, nassays, and radii on the 0th axis
+            # this axis is ordered by (1) pos/agree, then (2) radii, then (2) n assays.
+            # See ordering example when there are 2 radii (r1, r2):
+            # - pos: r1, nassays | pos: r2, nassays | agree: r1: nassays | agree: r1: nassays
+            tmp = np.concatenate(tmp1, axis=0)
             return tmp
         else:
             # no radius, so no similarities. just an empty placeholder
